@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schedule Manager</title>
+    <link rel="stylesheet" href="https://unpkg.com/fullcalendar@5.9.0/main.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/fullcalendar@5.9.0/daygrid/main.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/fullcalendar@5.9.0/timegrid/main.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/fullcalendar@5.9.0/list/main.min.css">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+    <style>
+        
+    </style>
+</head>
+<body>
+    
+    <div class="calendar-container">
+        <div id="calendar"></div>
+    </div>
+
+    
+    <div class="modal fade" id="myModal" role="dialog">
+        <div class="modal-dialog">
+            <!-- Modal content -->
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h4 class="modal-title">Create Event</h4>
+                </div>
+                <div class="modal-body">
+                    <form id="add-event-form" action="/add_event" method="POST">
+                        <input type="text" id="event-title" name="title" placeholder="Event Title" required>
+                        <input type="text" id="event-start" name="start" placeholder="Start Date (YYYY-MM-DD)" required>
+                        <input type="text" id="event-end" name="end" placeholder="End Date (YYYY-MM-DD)" required>
+                        <button type="submit">Add Event</button>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript dependencies -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://unpkg.com/fullcalendar@5.9.0/main.min.js"></script>
+    <script src="https://unpkg.com/fullcalendar@5.9.0/daygrid/main.min.js"></script>
+    <script src="https://unpkg.com/fullcalendar@5.9.0/timegrid/main.min.js"></script>
+    <script src="https://unpkg.com/fullcalendar@5.9.0/list/main.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+    
+    <!-- Your custom JavaScript -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            var calendarEl = document.getElementById('calendar');
+            var calendar = new FullCalendar.Calendar(calendarEl, {
+                timeZone: 'UTC',
+                themeSystem: 'bootstrap5',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay,listMonth'
+                },
+                weekNumbers: true,
+                dayMaxEvents: true,
+                events: '/get_events',
+                selectable: true,
+                editable: true,
+                select: function (info) {
+                    console.log("Selected date info: ", info);
+                    $('#myModal').modal('toggle');
+                    $('#event-start').val(info.startStr);
+                    $('#event-end').val(info.endStr);
+                },
+                eventClick: function (info) {
+                    var event = info.event;
+                    // Create a Bootstrap modal for editing/deleting events
+                    var modalContent = `
+                        <div class="modal fade" id="editEventModal" role="dialog">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <button type="button" class="close" data-dismiss="modal">&times;</button>
+                                        <h4 class="modal-title">Edit or Delete Event</h4>
+                                    </div>
+                                    <div class="modal-body">
+                                        <button id="editEvent" class="btn btn-primary">Mark as complete</button>
+                                        <button id="deleteEvent" class="btn btn-danger">Delete</button>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>`;
+                    $('body').append(modalContent);
+
+                    // Show the modal for editing/deleting
+                    $('#editEventModal').modal('show');
+
+                    $('#editEvent').on('click', function () {
+                        // Handle the "Edit" button click, maybe by showing another modal for editing
+                        $('#editEventModal').modal('hide');
+                        
+                        // You can add your edit logic here
+                    });
+
+                    $('#deleteEvent').on('click', function () {
+                        // Handle the "Delete" button click as before
+                        $('#editEventModal').modal('hide');
+                        if (confirm('Do you want to delete event "' + event.title + '"?')) {
+                            event.remove();
+                            $.post('/remove_event', { title: event.title, start: event.startStr, end: event.endStr }, function (data) {
+                                console.log(data.message);
+                            });
+                        }
+                    });
+                }
+            });
+
+            calendar.render();
+
+            $('#add-event-form').submit(function (e) {
+                e.preventDefault();
+                var title = $('#event-title').val();
+                var start = $('#event-start').val();
+                var end = $('#event-end').val();
+                if (title && start && end) {
+                    console.log("Form submission - Title: ", title, " Start: ", start, " End: ", end);
+                    $.post('/add_event', { title: title, start: start, end: end }, function (data) {
+                        console.log(data.message);
+                    });
+                    calendar.addEvent({
+                        title: title,
+                        start: start,
+                        end: end
+                    });
+                    $('#event-title, #event-start, #event-end').val('');
+                    $('#myModal').modal('toggle');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
